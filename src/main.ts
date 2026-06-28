@@ -1,54 +1,98 @@
 import type { Account } from "./entities/account";
+import { createFileHandle, openFileHandle } from "./utils/file";
 import "./style.css";
+import type { Project } from "./entities/project";
 
 const accounts = Array<Account>();
 
 const openFileBtn = document.querySelector("#open-file-btn");
+const saveFileBtn = document.querySelector("#save-file-btn");
 const addBtn = document.querySelector("#add-btn");
 const accountList = document.querySelector("#account-list");
 
 const openProject = async () => {
-    const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-    });
+    const handle = await openFileHandle();
 
     const file = await handle.getFile();
 
-    // const start = 1024;
-    // const end = 2048;
-
     const chunk = file.slice(0, file.size);
     const buffer = await chunk.arrayBuffer();
+    const view = new DataView(buffer);
 
-    const text = new TextDecoder().decode(buffer);
-    console.log(text);
+    const length = view.getUint16(4, true);
+
+    const decoder = new TextDecoder();
+    const magic = decoder.decode(new Uint8Array(buffer, 0, 4));
+    const title = decoder.decode(new Uint8Array(buffer, 6, length));
+
+    var cursor = 6 + length;
+
+    do {
+        const id = decoder.decode(new Uint8Array([view.getUint8(cursor)]));
+        const len = view.getUint16(cursor + 1, true);
+        const name = decoder.decode(new Uint8Array(buffer, cursor + 1 + 2, len));
+
+        accounts.push({ id, name });
+        cursor += 1 + 2 + len;
+    } while (cursor < buffer.byteLength);
+
+    refresh();
+
+    console.log(magic, title);
 }
 
-const saveProject = async () => {
-    const handle = await window.showSaveFilePicker({
-        suggestedName: 'hello.txt',
-        types: [
-            {
-                description: 'Text Files',
-                accept: {
-                    'text/plain': ['.txt'],
-                },
-            },
-        ],
-    });
+const saveProject = async (project: Project) => {
+    const handle = await createFileHandle();
 
+    const encoder = new TextEncoder();
     const writable = await handle.createWritable();
 
-    const bytes = new Uint8Array([
-        0x48, 0x65, 0x6C, 0x6C, 0x6F // "Hello"
-    ]);
+    const accountBytes = project.accounts.reduce((acc, act) => {
+        const [id] = encoder.encode(act.id);
+        const name = encoder.encode(act.name);
+
+        const buffer = new ArrayBuffer(1 + 2 + name.length);
+        const view = new DataView(buffer);
+
+        view.setUint8(0, id);
+        view.setUint16(1, name.length, true);
+
+        const bytes = new Uint8Array(buffer);
+        bytes.set(name, 3);
+
+        acc.push(...bytes);
+        return acc;
+    }, Array<number>());
+
+    const title = encoder.encode(project.header.title);
+
+    const buffer = new ArrayBuffer(4 + 2 + title.length + accountBytes.length);
+    const view = new DataView(buffer);
+
+    view.setUint16(4, title.length, true);
+
+    const bytes = new Uint8Array(buffer);
+
+    bytes.set([75, 87, 82, 84], 0);
+    bytes.set(title, 6);
+    bytes.set(accountBytes, 6 + title.length);
 
     await writable.write(bytes);
 
     await writable.close();
 }
 
-openFileBtn?.addEventListener("click", saveProject);
+openFileBtn?.addEventListener('click', openProject);
+
+saveFileBtn?.addEventListener('click', async () => {
+    await saveProject({
+        header: {
+            magic: 'KWRT',
+            title: 'My Kwarta'
+        },
+        accounts
+    });
+});
 
 const refresh = () => {
     if (!accountList) return;
