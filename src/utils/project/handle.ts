@@ -1,4 +1,5 @@
 import type { Project } from "@/entities/project";
+import { RecordType } from "../../constants/record-type";
 import { FileHandle } from "../file";
 import { ProjectReader } from "./reader";
 import { saveFileHandle } from "../file_legacy";
@@ -22,10 +23,21 @@ export class ProjectHandle {
     public async open(): Promise<ProjectHandle> {
         await this._file.open();
 
+        await this._reader.open();
+
         const title = await this._reader.getTitle();
         const accounts = await this._reader.getAccounts();
 
-        this._project = { title, accounts };
+        const directory = [
+            {
+                type: RecordType.accounts,
+                firstPageOffset: 0,
+                lastPageOffset: 0,
+                recordCount: 0
+            }
+        ];
+
+        this._project = { title, directory, accounts };
         return this;
     }
 

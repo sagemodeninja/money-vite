@@ -15,12 +15,32 @@ export class KwartaReader {
         this._cursor = position;
     }
 
+    public async getUint8(): Promise<number> {
+        const buffer = await this._handle.read(this._cursor, 1);
+        const view = new DataView(buffer);
+
+        const value = view.getUint8(0);
+        this._cursor += 1;
+
+        return value;
+    }
+
     public async getUint16(littleEndian: boolean = false): Promise<number> {
         const buffer = await this._handle.read(this._cursor, 2);
         const view = new DataView(buffer);
 
         const value = view.getUint16(0, littleEndian);
         this._cursor += 2;
+
+        return value;
+    }
+
+    public async getUint32(littleEndian: boolean = false): Promise<number> {
+        const buffer = await this._handle.read(this._cursor, 4);
+        const view = new DataView(buffer);
+
+        const value = view.getUint32(0, littleEndian);
+        this._cursor += 4;
 
         return value;
     }
@@ -34,6 +54,11 @@ export class KwartaReader {
         this._cursor += length;
 
         return value;
+    }
+
+    public async peek(length: number): Promise<Uint8Array> {
+        const buffer = await this._handle.read(this._cursor, length);
+        return new Uint8Array(buffer);
     }
 
     /** Gets a variable length (length-prefixed) string. */
