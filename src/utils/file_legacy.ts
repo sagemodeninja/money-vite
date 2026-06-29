@@ -9,16 +9,7 @@ const TYPES_ARRAY = [
     },
 ];
 
-export const openFileHandle = async (): Promise<FileSystemFileHandle> => {
-    const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-        types: TYPES_ARRAY
-    });
-
-    return handle;
-}
-
-export const createFileHandle = async (filename?: string): Promise<FileSystemFileHandle> => {
+export const saveFileHandle = async (filename?: string): Promise<FileSystemFileHandle> => {
     const suggestedName = `${filename ?? 'Untitled'}${FILE_FORMAT.EXTENSION}`;
 
     return await window.showSaveFilePicker({
