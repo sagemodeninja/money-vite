@@ -1,61 +1,32 @@
-import type { Account } from "./entities/account";
 import "./style.css";
-
-const accounts = Array<Account>();
+import { ProjectHandle } from "./utils/project/handle";
 
 const openFileBtn = document.querySelector("#open-file-btn");
+const saveFileBtn = document.querySelector("#save-file-btn");
 const addBtn = document.querySelector("#add-btn");
 const accountList = document.querySelector("#account-list");
 
+const project = new ProjectHandle();
+
 const openProject = async () => {
-    const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-    });
-
-    const file = await handle.getFile();
-
-    // const start = 1024;
-    // const end = 2048;
-
-    const chunk = file.slice(0, file.size);
-    const buffer = await chunk.arrayBuffer();
-
-    const text = new TextDecoder().decode(buffer);
-    console.log(text);
+    await project.open();
+    refresh();
 }
 
 const saveProject = async () => {
-    const handle = await window.showSaveFilePicker({
-        suggestedName: 'hello.txt',
-        types: [
-            {
-                description: 'Text Files',
-                accept: {
-                    'text/plain': ['.txt'],
-                },
-            },
-        ],
-    });
-
-    const writable = await handle.createWritable();
-
-    const bytes = new Uint8Array([
-        0x48, 0x65, 0x6C, 0x6C, 0x6F // "Hello"
-    ]);
-
-    await writable.write(bytes);
-
-    await writable.close();
+    await project.save();
 }
 
-openFileBtn?.addEventListener("click", saveProject);
+openFileBtn?.addEventListener('click', openProject);
+
+saveFileBtn?.addEventListener('click', saveProject);
 
 const refresh = () => {
     if (!accountList) return;
 
     accountList.innerHTML = "";
 
-    for (const account of accounts) {
+    for (const account of project.project.accounts) {
         const item = document.createElement("li");
         item.addEventListener("click", () => {
             alert(`Show ${account.id}`);
@@ -70,8 +41,8 @@ addBtn?.addEventListener("click", () => {
 
     if (!name) return;
 
-    accounts.push({
-        id: accounts.length.toString(),
+    project.project.accounts.push({
+        id: project.project.accounts.length.toString(),
         name
     });
 
